@@ -1,0 +1,180 @@
+---
+title: "World Flag Similarity Explorer"
+format:
+  html:
+    theme: cosmo
+    toc: false
+execute:
+  echo: false
+  warning: false
+  message: false
+---
+
+```{r}
+library(tidyverse)
+
+# Load precomputed flag similarity dataset
+flags_df <- readRDS("data/flag_similarity.rds")
+
+# Pass to Observable JS
+ojs_define(flags = flags_df)
+```
+
+```{=html}
+<style>
+  .flag-app {
+    max-width: 900px;
+    margin: 0 auto;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  }
+  .controls-panel {
+    background: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 28px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 24px;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  }
+  .flag-card {
+    background: #ffffff;
+    border: 1px solid #e2e8f0;
+    border-radius: 10px;
+    padding: 16px;
+    text-align: center;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+  }
+  .flag-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px rgba(0,0,0,0.08);
+  }
+  .flag-img-container {
+    height: 140px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: #fdfdfd;
+    border-radius: 6px;
+    overflow: hidden;
+    margin-top: 8px;
+    border: 1px solid #f0f0f0;
+  }
+  .flag-img {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+    border-radius: 3px;
+  }
+  .badge-rank {
+    display: inline-block;
+    padding: 3px 10px;
+    font-size: 0.8rem;
+    font-weight: 600;
+    border-radius: 20px;
+    background: #eef2ff;
+    color: #4338ca;
+    margin-bottom: 6px;
+  }
+  .target-badge {
+    background: #ecfdf5;
+    color: #065f46;
+  }
+  .results-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+    gap: 20px;
+  }
+  .section-title {
+    font-size: 1.15rem;
+    font-weight: 600;
+    color: #334155;
+    margin: 24px 0 12px 0;
+  }
+</style>
+```
+
+<div class="flag-app">
+
+```{ojs}
+flagsList = transpose(flags)
+
+// Clean UI inputs
+viewof selectedCountry = Inputs.select(
+  flagsList,
+  {
+    label: html`<strong>Selected Country:</strong>`,
+    format: d => d.name,
+    value: flagsList.find(d => d.name === "United States") || flagsList[0]
+  }
+)
+
+viewof viewMode = Inputs.radio(
+  ["Most Similar", "Least Similar"],
+  {
+    label: html`<strong>Comparison:</strong>`,
+    value: "Most Similar"
+  }
+)
+```
+
+```{ojs}
+// Determine the 3 matching flags
+comparisonFlags = {
+  if (viewMode === "Most Similar") {
+    return [
+      { code: selectedCountry.most_similar_1_code, name: selectedCountry.most_similar_1_name, rank: "1st Most Similar" },
+      { code: selectedCountry.most_similar_2_code, name: selectedCountry.most_similar_2_name, rank: "2nd Most Similar" },
+      { code: selectedCountry.most_similar_3_code, name: selectedCountry.most_similar_3_name, rank: "3rd Most Similar" }
+    ];
+  } else {
+    return [
+      { code: selectedCountry.least_similar_1_code, name: selectedCountry.least_similar_1_name, rank: "1st Least Similar" },
+      { code: selectedCountry.least_similar_2_code, name: selectedCountry.least_similar_2_name, rank: "2nd Least Similar" },
+      { code: selectedCountry.least_similar_3_code, name: selectedCountry.least_similar_3_name, rank: "3rd Least Similar" }
+    ];
+  }
+}
+
+// Display target flag and the 3 comparison flags
+html`
+<div>
+  <div class="section-title">Reference Flag</div>
+  <div style="max-width: 320px;">
+    <div class="flag-card">
+      <span class="badge-rank target-badge">Selected Country</span>
+      <h5 style="margin: 4px 0; color: #1e293b;">${selectedCountry.name}</h5>
+      <div class="flag-img-container" style="height: 180px;">
+        <img 
+          class="flag-img" 
+          src="data/${selectedCountry.code}.png" 
+          alt="Flag of ${selectedCountry.name}" 
+        />
+      </div>
+    </div>
+  </div>
+
+  <div class="section-title">Top 3 ${viewMode} Flags</div>
+  <div class="results-grid">
+    ${comparisonFlags.map(f => `
+      <div class="flag-card">
+        <span class="badge-rank">${f.rank}</span>
+        <h5 style="margin: 4px 0; color: #1e293b;">${f.name}</h5>
+        <div class="flag-img-container">
+          <img 
+            class="flag-img" 
+            src="data/${f.code}.png" 
+            alt="Flag of ${f.name}" 
+          />
+        </div>
+      </div>
+    `).join('')}
+  </div>
+</div>
+`
+```
+
+</div>
